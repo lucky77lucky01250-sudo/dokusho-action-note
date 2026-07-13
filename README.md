@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 読書アクションノート
 
-## Getting Started
+自己啓発書を「読んで終わり」にしないアプリ。
+本ごとに気づきを記録し、行動に移すアクションを最大3個の「アクティブ枠」で毎日チェック。
+30回実行したアクションは殿堂入りし、習慣化の実績として積み上がっていく。
 
-First, run the development server:
+**公開URL**: https://dokusho-action-note.vercel.app
+
+## スクリーンショット
+
+| 今日タブ | アクションタブ |
+|---|---|
+| ![今日タブ](docs/screenshot-today.png) | ![アクションタブ](docs/screenshot-actions.png) |
+
+## 誰の・何を・どう解決するか
+
+- **誰の**: 自己啓発書を読む人
+- **何を**: 読んで「良い勉強になった」で終わり、行動に移らず内容も忘れる問題
+- **どう**: 学びを「気づき」と「アクション」に分けて記録し、アクションは3個に絞って毎日チェック。実行回数が貯まる仕組みで定着させる
+
+## 主な機能
+
+- 本の登録（表紙はGoogle Books APIで自動取得。見つからなければ書名カード＋再取得ボタン）
+- 気づきの無制限記録（「一言で言うと？」の短文形式）
+- アクションの3状態管理: アクティブ（最大3個）／ストック／殿堂入り（30回実行で自動昇格）
+- 「今日やった」チェックは1日1回。同日再タップで取り消し
+- ログイン不要・localStorage保存・オフライン入力可
+
+## 設計のポイント
+
+- アクティブ枠を3個に制限することで「本を読むほどアクションが溢れる」問題を構造的に防ぐ
+- ホーム（今日タブ）に表示するのは本棚ではなく「今日やる行動」。朝晩のチェックが3タップ以内で終わる
+- 殿堂入りリストが「読書が行動に変わった証拠」として貯まり、続けるモチベーションになる
+
+## 技術スタック
+
+- Next.js 16 (App Router) / TypeScript / Tailwind CSS 4
+- データ保存: localStorage（ログイン・DB不要）
+- 表紙取得: Google Books API（APIキー不要）
+- ホスティング: Vercel
+
+## 開発
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+要件定義は [requirements.md](requirements.md) を参照。
