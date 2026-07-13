@@ -1,65 +1,301 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import TodayTab from "@/components/TodayTab";
+import ShelfTab from "@/components/ShelfTab";
+import ActionsTab from "@/components/ActionsTab";
+import { loadData, saveData } from "@/lib/storage";
+import { fetchCover } from "@/lib/cover";
+import {
+  Action,
+  AppData,
+  ACTIVE_LIMIT,
+  MASTER_COUNT,
+  emptyData,
+  todayStr,
+} from "@/lib/types";
+
+type Tab = "today" | "shelf" | "actions";
 
 export default function Home() {
+  const [data, setData] = useState<AppData>(emptyData());
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState<Tab>("today");
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setData(loadData());
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (loaded) saveData(data);
+  }, [data, loaded]);
+
+  function showToast(message: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = setTimeout(() => setToast(""), 2200);
+  }
+
+  // ---- 本 ----
+  function addBook(title: string, author: string) {
+    const id = crypto.randomUUID();
+    setData((prev) => ({
+      ...prev,
+      books: [
+        { id, title, author, coverUrl: null, createdAt: Date.now() },
+        ...prev.books,
+      ],
+    }));
+    showToast(`📚『${title}』を本棚に追加しました`);
+    // 表紙は裏で検索（失敗しても登録は止めない）
+    fetchCover(title, author).then((coverUrl) => {
+      if (!coverUrl) return;
+      setData((prev) => ({
+        ...prev,
+        books: prev.books.map((b) => (b.id === id ? { ...b, coverUrl } : b)),
+      }));
+    });
+  }
+
+  function refetchCover(bookId: string) {
+    const book = data.books.find((b) => b.id === bookId);
+    if (!book) return;
+    showToast("表紙を探しています…");
+    fetchCover(book.title, book.author).then((coverUrl) => {
+      if (coverUrl) {
+        setData((prev) => ({
+          ...prev,
+          books: prev.books.map((b) =>
+            b.id === bookId ? { ...b, coverUrl } : b
+          ),
+        }));
+        showToast("表紙を設定しました");
+      } else {
+        showToast("見つかりませんでした。時間をおいて再度どうぞ");
+      }
+    });
+  }
+
+  function deleteBook(bookId: string) {
+    const book = data.books.find((b) => b.id === bookId);
+    if (!book) return;
+    if (!confirm(`『${book.title}』を削除しますか？\n気づき・アクションも消えます。`))
+      return;
+    setData((prev) => ({
+      books: prev.books.filter((b) => b.id !== bookId),
+      insights: prev.insights.filter((i) => i.bookId !== bookId),
+      actions: prev.actions.filter((a) => a.bookId !== bookId),
+    }));
+    setSelectedBookId(null);
+  }
+
+  // ---- 気づき ----
+  function addInsight(bookId: string, text: string) {
+    setData((prev) => ({
+      ...prev,
+      insights: [
+        { id: crypto.randomUUID(), bookId, text, createdAt: Date.now() },
+        ...prev.insights,
+      ],
+    }));
+  }
+
+  function updateInsight(insightId: string, text: string) {
+    setData((prev) => ({
+      ...prev,
+      insights: prev.insights.map((i) =>
+        i.id === insightId ? { ...i, text } : i
+      ),
+    }));
+  }
+
+  function deleteInsight(insightId: string) {
+    setData((prev) => ({
+      ...prev,
+      insights: prev.insights.filter((i) => i.id !== insightId),
+    }));
+  }
+
+  // ---- アクション ----
+  const activeCount = data.actions.filter((a) => a.status === "active").length;
+
+  function addAction(bookId: string, text: string) {
+    const action: Action = {
+      id: crypto.randomUUID(),
+      bookId,
+      text,
+      status: "stock",
+      doneCount: 0,
+      lastDoneDate: null,
+      createdAt: Date.now(),
+    };
+    setData((prev) => ({ ...prev, actions: [action, ...prev.actions] }));
+    showToast("ストックに追加しました");
+  }
+
+  function promoteAction(actionId: string) {
+    if (activeCount >= ACTIVE_LIMIT) {
+      showToast(`アクティブは${ACTIVE_LIMIT}個までです。先にどれかをストックへ`);
+      return;
+    }
+    setData((prev) => ({
+      ...prev,
+      actions: prev.actions.map((a) =>
+        a.id === actionId ? { ...a, status: "active" as const } : a
+      ),
+    }));
+    showToast("アクティブにしました。今日タブに表示されます");
+  }
+
+  function demoteAction(actionId: string) {
+    setData((prev) => ({
+      ...prev,
+      actions: prev.actions.map((a) =>
+        a.id === actionId ? { ...a, status: "stock" as const } : a
+      ),
+    }));
+  }
+
+  function deleteAction(actionId: string) {
+    const action = data.actions.find((a) => a.id === actionId);
+    if (!action) return;
+    if (!confirm(`「${action.text}」を削除しますか？`)) return;
+    setData((prev) => ({
+      ...prev,
+      actions: prev.actions.filter((a) => a.id !== actionId),
+    }));
+  }
+
+  function toggleDone(actionId: string) {
+    const today = todayStr();
+    const action = data.actions.find((a) => a.id === actionId);
+    if (!action) return;
+
+    if (action.lastDoneDate === today) {
+      // 同日タップは取り消し
+      setData((prev) => ({
+        ...prev,
+        actions: prev.actions.map((a) =>
+          a.id === actionId
+            ? {
+                ...a,
+                doneCount: Math.max(a.doneCount - 1, 0),
+                lastDoneDate: null,
+              }
+            : a
+        ),
+      }));
+      return;
+    }
+
+    const newCount = action.doneCount + 1;
+    const mastered = newCount >= MASTER_COUNT;
+    setData((prev) => ({
+      ...prev,
+      actions: prev.actions.map((a) =>
+        a.id === actionId
+          ? {
+              ...a,
+              doneCount: newCount,
+              lastDoneDate: today,
+              status: mastered ? ("mastered" as const) : a.status,
+            }
+          : a
+      ),
+    }));
+    showToast(
+      mastered
+        ? `🎉「${action.text}」が殿堂入り！枠が1つ空きました`
+        : `いいね！ ${newCount}回目を記録しました`
+    );
+  }
+
+  const stockCount = data.actions.filter((a) => a.status === "stock").length;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="mx-auto min-h-dvh w-full max-w-md bg-[#faf6ef] pb-24 text-neutral-900">
+      <header className="px-4 pb-1 pt-5">
+        <h1 className="text-xl font-bold">📚 読書アクションノート</h1>
+        <p className="mt-0.5 text-xs text-neutral-400">
+          学びを行動に変えて、定着させる
+        </p>
+      </header>
+
+      {tab === "today" && (
+        <TodayTab
+          actions={data.actions}
+          books={data.books}
+          onToggleDone={toggleDone}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      )}
+      {tab === "shelf" && (
+        <ShelfTab
+          books={data.books}
+          insights={data.insights}
+          actions={data.actions}
+          selectedBookId={selectedBookId}
+          onSelectBook={setSelectedBookId}
+          onAddBook={addBook}
+          onDeleteBook={deleteBook}
+          onRefetchCover={refetchCover}
+          onAddInsight={addInsight}
+          onUpdateInsight={updateInsight}
+          onDeleteInsight={deleteInsight}
+          onAddAction={addAction}
+          onDeleteAction={deleteAction}
+          onPromoteAction={promoteAction}
+        />
+      )}
+      {tab === "actions" && (
+        <ActionsTab
+          actions={data.actions}
+          books={data.books}
+          onPromote={promoteAction}
+          onDemote={demoteAction}
+          onDelete={deleteAction}
+        />
+      )}
+
+      {/* 下部タブバー */}
+      <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-neutral-200 bg-white">
+        {(
+          [
+            ["today", "☀️ 今日"],
+            ["shelf", "📚 本棚"],
+            [
+              "actions",
+              `🔥 アクション${stockCount > 0 ? ` (${stockCount})` : ""}`,
+            ],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => {
+              setTab(id);
+              if (id !== "shelf") setSelectedBookId(null);
+            }}
+            className={`flex-1 py-3.5 text-sm font-bold ${
+              tab === id ? "text-amber-600" : "text-neutral-400"
+            }`}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            {label}
+            {tab === id && (
+              <span className="mx-auto mt-1 block h-1 w-8 rounded-full bg-amber-500" />
+            )}
+          </button>
+        ))}
+      </nav>
+
+      {/* トースト */}
+      {toast && (
+        <div className="fixed inset-x-4 bottom-20 z-20 mx-auto max-w-md rounded-2xl bg-neutral-900/90 px-4 py-3 text-center text-sm font-bold text-white">
+          {toast}
         </div>
-      </main>
-    </div>
+      )}
+    </main>
   );
 }
