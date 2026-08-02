@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Action, Book, Insight } from "@/lib/types";
+import { Action, Book, CategoryId, Insight, categoryMeta } from "@/lib/types";
+import CategoryChips from "./CategoryChips";
 
 type Props = {
   books: Book[];
@@ -12,8 +13,9 @@ type Props = {
   onAddBook: (title: string, author: string) => void;
   onDeleteBook: (bookId: string) => void;
   onRefetchCover: (bookId: string) => void;
-  onAddInsight: (bookId: string, text: string) => void;
+  onAddInsight: (bookId: string, text: string, category: CategoryId | null) => void;
   onUpdateInsight: (insightId: string, text: string) => void;
+  onSetInsightCategory: (insightId: string, category: CategoryId | null) => void;
   onDeleteInsight: (insightId: string) => void;
   onAddAction: (bookId: string, text: string) => void;
   onDeleteAction: (actionId: string) => void;
@@ -38,6 +40,7 @@ export default function ShelfTab(props: Props) {
     onRefetchCover,
     onAddInsight,
     onUpdateInsight,
+    onSetInsightCategory,
     onDeleteInsight,
     onAddAction,
     onDeleteAction,
@@ -47,6 +50,7 @@ export default function ShelfTab(props: Props) {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [insightText, setInsightText] = useState("");
+  const [insightCategory, setInsightCategory] = useState<CategoryId | null>(null);
   const [actionText, setActionText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -114,13 +118,19 @@ export default function ShelfTab(props: Props) {
             <button
               onClick={() => {
                 if (!insightText.trim()) return;
-                onAddInsight(selected.id, insightText.trim());
+                onAddInsight(selected.id, insightText.trim(), insightCategory);
                 setInsightText("");
               }}
               className="h-12 w-16 rounded-xl bg-amber-500 font-bold text-white active:bg-amber-600"
             >
               追加
             </button>
+          </div>
+          <div className="mt-2">
+            <CategoryChips
+              value={insightCategory}
+              onChange={setInsightCategory}
+            />
           </div>
           <ul className="mt-3 space-y-2">
             {bookInsights.map((insight) => (
@@ -135,6 +145,12 @@ export default function ShelfTab(props: Props) {
                       value={editingText}
                       onChange={(e) => setEditingText(e.target.value)}
                       className="h-11 w-full rounded-lg border border-amber-400 bg-white px-3 focus:outline-none"
+                    />
+                    <CategoryChips
+                      value={insight.category}
+                      onChange={(category) =>
+                        onSetInsightCategory(insight.id, category)
+                      }
                     />
                     <div className="flex gap-2">
                       <button
@@ -157,7 +173,23 @@ export default function ShelfTab(props: Props) {
                   </div>
                 ) : (
                   <div className="flex items-start justify-between gap-2">
-                    <p className="leading-relaxed">{insight.text}</p>
+                    <div className="min-w-0">
+                      <p className="leading-relaxed">{insight.text}</p>
+                      {(() => {
+                        const meta = categoryMeta(insight.category);
+                        return (
+                          <span
+                            className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
+                              meta
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-neutral-100 text-neutral-400"
+                            }`}
+                          >
+                            {meta ? `${meta.emoji} ${meta.label}` : "未分類"}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <span className="flex shrink-0 gap-2 text-xs">
                       <button
                         onClick={() => {

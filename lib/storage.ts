@@ -9,7 +9,10 @@ export function loadData(): AppData {
     const parsed = JSON.parse(raw) as Partial<AppData>;
     return {
       books: parsed.books ?? [],
-      insights: parsed.insights ?? [],
+      insights: (parsed.insights ?? []).map((i) => ({
+        ...i,
+        category: i.category ?? null,
+      })),
       actions: parsed.actions ?? [],
     };
   } catch {

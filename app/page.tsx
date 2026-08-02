@@ -4,18 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import TodayTab from "@/components/TodayTab";
 import ShelfTab from "@/components/ShelfTab";
 import ActionsTab from "@/components/ActionsTab";
+import NotesTab from "@/components/NotesTab";
 import { loadData, saveData } from "@/lib/storage";
 import { fetchCover } from "@/lib/cover";
 import {
   Action,
   AppData,
   ACTIVE_LIMIT,
+  CategoryId,
   MASTER_COUNT,
   emptyData,
   todayStr,
 } from "@/lib/types";
 
-type Tab = "today" | "shelf" | "actions";
+type Tab = "today" | "shelf" | "notes" | "actions";
 
 export default function Home() {
   const [data, setData] = useState<AppData>(emptyData());
@@ -94,11 +96,11 @@ export default function Home() {
   }
 
   // ---- 気づき ----
-  function addInsight(bookId: string, text: string) {
+  function addInsight(bookId: string, text: string, category: CategoryId | null) {
     setData((prev) => ({
       ...prev,
       insights: [
-        { id: crypto.randomUUID(), bookId, text, createdAt: Date.now() },
+        { id: crypto.randomUUID(), bookId, text, category, createdAt: Date.now() },
         ...prev.insights,
       ],
     }));
@@ -109,6 +111,15 @@ export default function Home() {
       ...prev,
       insights: prev.insights.map((i) =>
         i.id === insightId ? { ...i, text } : i
+      ),
+    }));
+  }
+
+  function setInsightCategory(insightId: string, category: CategoryId | null) {
+    setData((prev) => ({
+      ...prev,
+      insights: prev.insights.map((i) =>
+        i.id === insightId ? { ...i, category } : i
       ),
     }));
   }
@@ -244,10 +255,18 @@ export default function Home() {
           onRefetchCover={refetchCover}
           onAddInsight={addInsight}
           onUpdateInsight={updateInsight}
+          onSetInsightCategory={setInsightCategory}
           onDeleteInsight={deleteInsight}
           onAddAction={addAction}
           onDeleteAction={deleteAction}
           onPromoteAction={promoteAction}
+        />
+      )}
+      {tab === "notes" && (
+        <NotesTab
+          books={data.books}
+          insights={data.insights}
+          onSetCategory={setInsightCategory}
         />
       )}
       {tab === "actions" && (
@@ -266,6 +285,7 @@ export default function Home() {
           [
             ["today", "☀️ 今日"],
             ["shelf", "📚 本棚"],
+            ["notes", "🗂 分類"],
             [
               "actions",
               `🔥 アクション${stockCount > 0 ? ` (${stockCount})` : ""}`,

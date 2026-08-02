@@ -6,10 +6,25 @@ export type Book = {
   createdAt: number;
 };
 
+export const CATEGORIES = [
+  { id: "work", label: "仕事", emoji: "💼" },
+  { id: "money", label: "経済", emoji: "💰" },
+  { id: "health", label: "健康", emoji: "🏃" },
+  { id: "relationship", label: "人間関係", emoji: "🤝" },
+  { id: "culture", label: "趣味教養", emoji: "🎨" },
+] as const;
+
+export type CategoryId = (typeof CATEGORIES)[number]["id"];
+
+export function categoryMeta(id: CategoryId | null | undefined) {
+  return CATEGORIES.find((c) => c.id === id) ?? null;
+}
+
 export type Insight = {
   id: string;
   bookId: string;
   text: string;
+  category: CategoryId | null;
   createdAt: number;
 };
 
