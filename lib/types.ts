@@ -12,6 +12,7 @@ export const CATEGORIES = [
   { id: "health", label: "健康", emoji: "🏃" },
   { id: "relationship", label: "人間関係", emoji: "🤝" },
   { id: "culture", label: "趣味教養", emoji: "🎨" },
+  { id: "marketing", label: "マーケティング", emoji: "📣" },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
