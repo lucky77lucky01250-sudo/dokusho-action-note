@@ -283,29 +283,35 @@ export default function Home() {
       <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-neutral-200 bg-white">
         {(
           [
-            ["today", "☀️ 今日"],
-            ["shelf", "📚 本棚"],
-            ["notes", "🗂 分類"],
-            [
-              "actions",
-              `🔥 アクション${stockCount > 0 ? ` (${stockCount})` : ""}`,
-            ],
+            ["today", "☀️", "今日"],
+            ["shelf", "📚", "本棚"],
+            ["notes", "🗂", "分類"],
+            ["actions", "🔥", "アクション"],
           ] as const
-        ).map(([id, label]) => (
+        ).map(([id, emoji, label]) => (
           <button
             key={id}
             onClick={() => {
               setTab(id);
               if (id !== "shelf") setSelectedBookId(null);
             }}
-            className={`flex-1 py-3.5 text-sm font-bold ${
+            className={`flex flex-1 flex-col items-center gap-1 px-0.5 py-3 text-xs font-bold ${
               tab === id ? "text-amber-600" : "text-neutral-400"
             }`}
           >
-            {label}
-            {tab === id && (
-              <span className="mx-auto mt-1 block h-1 w-8 rounded-full bg-amber-500" />
-            )}
+            <span className="relative whitespace-nowrap">
+              <span aria-hidden>{emoji}</span> {label}
+              {id === "actions" && stockCount > 0 && (
+                <span className="absolute -right-3.5 -top-1.5 rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                  {stockCount}
+                </span>
+              )}
+            </span>
+            <span
+              className={`h-1 w-8 rounded-full ${
+                tab === id ? "bg-amber-500" : "bg-transparent"
+              }`}
+            />
           </button>
         ))}
       </nav>
