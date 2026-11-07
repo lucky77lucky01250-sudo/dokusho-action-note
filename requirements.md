@@ -19,7 +19,7 @@
 
 | # | 機能 | 内容 |
 |---|------|------|
-| 1 | 本の登録 | タイトル＋著者（任意）。保存時にGoogle Books APIで表紙を自動取得。なければ書名カード |
+| 1 | 本の登録 | タイトル＋著者（任意）＋ISBN（任意）。保存時にサーバー側 /api/cover 経由でGoogle Books APIから表紙を自動取得。ISBNを入れると正確に取得（書名・著者も自動補完）。なければ書名カード |
 | 2 | 気づき記録 | 本ごとに無制限。「一言で言うと？」の短文形式。編集・削除可 |
 | 3 | アクション管理 | アクティブ最大3個＋ストック＋殿堂入りの3状態。1タップで昇格・降格 |
 | 4 | 今日やったチェック | 1日1回。タップで実行回数+1、同日再タップで取り消し。進捗n/30表示 |
@@ -35,8 +35,9 @@
 
 ## 5. 非機能要件
 - モバイル最優先（375px基準）。朝晩のチェックは3タップ以内で完了
-- localStorageのみ（キー: dokusho-action-note）。オフライン入力可・無料枠完結
+- アプリのデータはlocalStorageのみ（キー: dokusho-action-note）。オフライン入力可・無料枠完結
 - 表紙取得の失敗時も登録は止めない
+- 表紙取得だけはサーバー側の小さなヘルパー（Route Handler /api/cover）経由。これは外部APIを叩くだけの無状態な処理で、DB・ログイン・アプリデータの保存は増やさない（「サーバー導入しない」方針の唯一の例外。2026-11 Ryu承認済み）
 
 ## 6. 技術スタック
-Next.js (App Router) + TypeScript + Tailwind CSS / localStorage / Google Books API（キー不要） / Vercel
+Next.js (App Router) + TypeScript + Tailwind CSS / localStorage / Google Books API（サーバー側 /api/cover 経由・APIキーは環境変数 GOOGLE_BOOKS_API_KEY に保管＝コードに書かない） / Vercel
