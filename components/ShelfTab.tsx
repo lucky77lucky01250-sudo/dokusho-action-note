@@ -13,6 +13,7 @@ type Props = {
   onAddBook: (title: string, author: string, isbn: string) => void;
   onDeleteBook: (bookId: string) => void;
   onRefetchCover: (bookId: string) => void;
+  onRefetchAllCovers: () => void;
   onAddInsight: (bookId: string, text: string, category: CategoryId | null) => void;
   onUpdateInsight: (insightId: string, text: string) => void;
   onSetInsightCategory: (insightId: string, category: CategoryId | null) => void;
@@ -38,6 +39,7 @@ export default function ShelfTab(props: Props) {
     onAddBook,
     onDeleteBook,
     onRefetchCover,
+    onRefetchAllCovers,
     onAddInsight,
     onUpdateInsight,
     onSetInsightCategory,
@@ -334,6 +336,15 @@ export default function ShelfTab(props: Props) {
           本棚に追加（表紙は自動で探します）
         </button>
       </div>
+
+      {books.some((b) => !b.coverUrl) && (
+        <button
+          onClick={onRefetchAllCovers}
+          className="mt-3 w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-bold text-amber-700 active:bg-amber-100"
+        >
+          🔎 表紙が無い本（{books.filter((b) => !b.coverUrl).length}冊）の表紙をまとめて探す
+        </button>
+      )}
 
       {books.length === 0 && (
         <p className="pt-10 text-center text-sm text-neutral-400">

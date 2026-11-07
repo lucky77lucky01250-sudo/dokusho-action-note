@@ -93,6 +93,31 @@ export default function Home() {
     });
   }
 
+  // 表紙が無い本をまとめて取得する
+  async function refetchAllCovers() {
+    const targets = data.books.filter((b) => !b.coverUrl);
+    if (targets.length === 0) {
+      showToast("表紙が無い本はありません");
+      return;
+    }
+    showToast(`表紙を探しています…（${targets.length}冊）`);
+    let found = 0;
+    for (const book of targets) {
+      const info = await fetchCoverInfo({ title: book.title, author: book.author });
+      if (info.coverUrl) {
+        found++;
+        const url = info.coverUrl;
+        setData((prev) => ({
+          ...prev,
+          books: prev.books.map((b) =>
+            b.id === book.id ? { ...b, coverUrl: url } : b
+          ),
+        }));
+      }
+    }
+    showToast(`表紙を${found}冊に設定しました`);
+  }
+
   function deleteBook(bookId: string) {
     const book = data.books.find((b) => b.id === bookId);
     if (!book) return;
@@ -264,6 +289,7 @@ export default function Home() {
           onAddBook={addBook}
           onDeleteBook={deleteBook}
           onRefetchCover={refetchCover}
+          onRefetchAllCovers={refetchAllCovers}
           onAddInsight={addInsight}
           onUpdateInsight={updateInsight}
           onSetInsightCategory={setInsightCategory}
