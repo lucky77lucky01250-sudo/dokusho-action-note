@@ -10,7 +10,7 @@ type Props = {
   actions: Action[];
   selectedBookId: string | null;
   onSelectBook: (bookId: string | null) => void;
-  onAddBook: (title: string, author: string) => void;
+  onAddBook: (title: string, author: string, isbn: string) => void;
   onDeleteBook: (bookId: string) => void;
   onRefetchCover: (bookId: string) => void;
   onAddInsight: (bookId: string, text: string, category: CategoryId | null) => void;
@@ -49,6 +49,7 @@ export default function ShelfTab(props: Props) {
 
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
+  const [isbn, setIsbn] = useState("");
   const [insightText, setInsightText] = useState("");
   const [insightCategory, setInsightCategory] = useState<CategoryId | null>(null);
   const [actionText, setActionText] = useState("");
@@ -307,12 +308,26 @@ export default function ShelfTab(props: Props) {
           placeholder="著者（任意）"
           className="h-12 w-full rounded-xl border border-neutral-300 bg-white px-3 text-base focus:border-amber-500 focus:outline-none"
         />
+        <input
+          type="text"
+          inputMode="numeric"
+          value={isbn}
+          onChange={(e) => setIsbn(e.target.value)}
+          placeholder="ISBN（任意・裏表紙のバーコードの数字）"
+          className="h-12 w-full rounded-xl border border-neutral-300 bg-white px-3 text-base focus:border-amber-500 focus:outline-none"
+        />
+        <p className="px-1 text-xs text-neutral-400">
+          ISBNを入れると表紙を正確に取得できます。タイトル未入力でもOK。
+        </p>
         <button
           onClick={() => {
-            if (!title.trim()) return;
-            onAddBook(title.trim(), author.trim());
+            const t = title.trim();
+            const code = isbn.replace(/[^0-9Xx]/g, "");
+            if (!t && !code) return;
+            onAddBook(t, author.trim(), code);
             setTitle("");
             setAuthor("");
+            setIsbn("");
           }}
           className="h-12 w-full rounded-xl bg-amber-500 text-base font-bold text-white active:bg-amber-600"
         >

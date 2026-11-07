@@ -6,7 +6,7 @@ import ShelfTab from "@/components/ShelfTab";
 import ActionsTab from "@/components/ActionsTab";
 import NotesTab from "@/components/NotesTab";
 import { loadData, saveData } from "@/lib/storage";
-import { fetchCover } from "@/lib/cover";
+import { fetchCover, fetchCoverInfo } from "@/lib/cover";
 import {
   Action,
   AppData,
@@ -43,22 +43,33 @@ export default function Home() {
   }
 
   // ---- 本 ----
-  function addBook(title: string, author: string) {
+  function addBook(title: string, author: string, isbn: string) {
     const id = crypto.randomUUID();
+    // ISBNだけでタイトル未入力のときは仮の表示名を置き、取得後に本名へ差し替える
+    const displayTitle = title || (isbn ? `ISBN: ${isbn}` : title);
     setData((prev) => ({
       ...prev,
       books: [
-        { id, title, author, coverUrl: null, createdAt: Date.now() },
+        { id, title: displayTitle, author, coverUrl: null, createdAt: Date.now() },
         ...prev.books,
       ],
     }));
-    showToast(`📚『${title}』を本棚に追加しました`);
+    showToast(`📚『${displayTitle}』を本棚に追加しました`);
     // 表紙は裏で検索（失敗しても登録は止めない）
-    fetchCover(title, author).then((coverUrl) => {
-      if (!coverUrl) return;
+    fetchCoverInfo(isbn ? { isbn } : { title, author }).then((info) => {
       setData((prev) => ({
         ...prev,
-        books: prev.books.map((b) => (b.id === id ? { ...b, coverUrl } : b)),
+        books: prev.books.map((b) =>
+          b.id === id
+            ? {
+                ...b,
+                coverUrl: info.coverUrl ?? b.coverUrl,
+                // タイトル・著者が未入力ならISBN検索結果で補う
+                title: title ? b.title : info.title ?? b.title,
+                author: author ? b.author : info.author ?? b.author,
+              }
+            : b
+        ),
       }));
     });
   }

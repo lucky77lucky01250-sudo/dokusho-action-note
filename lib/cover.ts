@@ -1,24 +1,36 @@
-// Google Books APIで表紙画像を検索する（APIキー不要）
-// 見つからない・失敗した場合はnullを返し、本の登録は止めない
+// 表紙をサーバー側ヘルパー（/api/cover）経由で取得する
+// サーバーがGoogle Books APIをキー付きで叩くため、キー無し共有枠の上限超過(429)を避けられる
+// 見つからない・失敗した場合は coverUrl: null を返し、本の登録は止めない
+
+export type CoverResult = {
+  coverUrl: string | null;
+  title?: string;
+  author?: string;
+};
+
+export async function fetchCoverInfo(params: {
+  title?: string;
+  author?: string;
+  isbn?: string;
+}): Promise<CoverResult> {
+  try {
+    const sp = new URLSearchParams();
+    if (params.isbn) sp.set("isbn", params.isbn);
+    if (params.title) sp.set("title", params.title);
+    if (params.author) sp.set("author", params.author);
+    const res = await fetch(`/api/cover?${sp.toString()}`);
+    if (!res.ok) return { coverUrl: null };
+    return (await res.json()) as CoverResult;
+  } catch {
+    return { coverUrl: null };
+  }
+}
+
+// 既存の呼び出し互換：タイトル＋著者から表紙URLだけ返す
 export async function fetchCover(
   title: string,
   author: string
 ): Promise<string | null> {
-  try {
-    const q = author ? `intitle:${title}+inauthor:${author}` : `intitle:${title}`;
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
-      q
-    )}&maxResults=5&country=JP`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const json = await res.json();
-    type Item = { volumeInfo?: { imageLinks?: { thumbnail?: string } } };
-    const items: Item[] = json.items ?? [];
-    const thumb = items
-      .map((i) => i.volumeInfo?.imageLinks?.thumbnail)
-      .find((t): t is string => Boolean(t));
-    return thumb ? thumb.replace(/^http:/, "https:") : null;
-  } catch {
-    return null;
-  }
+  const r = await fetchCoverInfo({ title, author });
+  return r.coverUrl;
 }
